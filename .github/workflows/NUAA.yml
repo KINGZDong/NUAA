@@ -1,0 +1,87 @@
+# This is a basic workflow to help you get started with Actions
+
+name: clock_in
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *' # runs at 12:00 UTC everyday
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.7.7' # install the python version needed
+          
+      - name: install python packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: install edge
+          # Get Edge and its driver
+        run: |
+          ## Setup
+          curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
+          sudo install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/
+          sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge-dev.list'
+          sudo rm microsoft.gpg
+          ## Install
+          sudo apt update
+          sudo apt install microsoft-edge-dev
+
+          wget https://msedgedriver.azureedge.net/95.0.1020.5/edgedriver_linux64.zip -P ~/
+          unzip ~/edgedriver_linux64.zip -d ~/
+          rm ~/edgedriver_linux64.zip
+          sudo mv -f ~/msedgedriver /usr/local/share/
+          sudo chmod 777 /usr/local/share/msedgedriver
+          sudo ln -s /usr/local/share/msedgedriver /usr/local/bin/msedgedriver
+          which msedgedriver.exe
+          echo $PATH
+#          ls /usr/local/share
+#          ls /usr/local/bin
+          
+          
+       # Debugging statement, remove when this is figured out
+         
+      - name: execute py script # run sj-gobierno.py to get the latest data
+        env: 
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        run: python main.py
+
+          
+          
+#       - name: commit files
+#         run: |
+#           git config --local user.email "action@github.com"
+#           git config --local user.name "GitHub Action"
+#           git add -A
+#           git commit -m "update data" -a
+
+      - name: push changes
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+
